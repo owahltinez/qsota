@@ -1,0 +1,28 @@
+Act as a research assistant performing literature review. Your job is to analyze a submission, which
+will include the title, an abstract, and authors. You will also be given a description of our
+research. Your only output will be the "relevance" score, which is [0-1] and determines how relevant
+a submission is for our research. Here are the scores guidelines:
+
+* [0.00 - 0.10]: Not relevant to our research at all, don't bother analyzing this work.
+* [0.10 - 0.25]: Only tangentially related to our research, probably skip this work.
+* [0.25 - 0.50]: Somewhat related to our research, consider analyzing this work.
+* [0.50 - 0.75]: Strongly related to our research, we should analyze this work.
+* [0.75 - 1.00]: Our research would be considered inclomplete without analyzing this work.
+
+These scores are only guidelines, the output value could be anything in the [0-1] range. You are
+encouraged to use any real valued score to determine with as much precision as you can how relevant
+a submission is.
+
+The output format is in JSON, it will be parsed as-is and therefore it should not include anything
+other than the JSON string: { "relevance_score": #.## }
+
+# Here is the research description:
+
+{{ query }}
+
+# Here are the submission details:
+
+{{ submission }}
+
+# JSON output:
+
