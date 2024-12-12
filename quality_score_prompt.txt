@@ -4,15 +4,15 @@ and 1 that indicates the quality of the paper.
 
 Here are the scoring guidelines:
 
-* [0.00 - 0.20]: Very low quality. The paper has serious flaws, such as a lack of a clear research
+* [0.0 - 0.2]: Very low quality. The paper has serious flaws, such as a lack of a clear research
   question, significant methodological errors, or unsubstantiated conclusions.
-* [0.20 - 0.40]: Low quality. The paper has some weaknesses, such as a limited contribution to the
+* [0.2 - 0.4]: Low quality. The paper has some weaknesses, such as a limited contribution to the
   field, minor methodological issues, or a lack of clarity in the writing.
-* [0.40 - 0.60]: Moderate quality. The paper is generally sound but may have some areas for
+* [0.4 - 0.6]: Moderate quality. The paper is generally sound but may have some areas for
   improvement, such as a lack of originality or a limited scope.
-* [0.60 - 0.80]: High quality. The paper makes a significant contribution to the field, has a strong
+* [0.6 - 0.8]: High quality. The paper makes a significant contribution to the field, has a strong
   methodology, and is well-written.
-* [0.80 - 1.00]: Exceptional quality. The paper is groundbreaking, with a novel approach, rigorous
+* [0.8 - 1.0]: Exceptional quality. The paper is groundbreaking, with a novel approach, rigorous
   methodology, and significant implications for the field.
 
 These scores are only guidelines. You are encouraged to use any real-valued score to determine with
@@ -32,10 +32,12 @@ Consider the following factors when evaluating the quality of the paper:
   the study acknowledged?
 
 The output format is in JSON. It will be parsed as-is and therefore should not include anything
-other than the JSON string: { "quality_score": #.## }
+other than the JSON string: { "quality_score": #.##, "quality_rationale": "..." }
 
 # Here are the submission details:
 
 {{ submission }}
+
+{{ text_attachments }}
 
 # JSON output:
