@@ -208,7 +208,7 @@ def _eval_templated_prompt(
 @click.option("--query", default=None)
 @click.option("--limit", type=int, default=None)
 @click.option("--database", default=None, type=click.Choice(["arxiv", "ads"]))
-@click.option("--has_doi", is_flag=True, default=False)
+@click.option("--has-doi", is_flag=True, default=False)
 @click.option("--token", default=None)
 def search(
     query: str | None = None,
