@@ -140,7 +140,7 @@ def _iter_ads_api(
   response_json = response.json()
   if response_json["response"]["numFound"] == 0:
     raise RuntimeError("No results found")
-  for doc in response_json["response"]["docs"][:10]:
+  for doc in response_json["response"]["docs"]:
     authors = doc.get("author", [])
     if isinstance(authors, str):
       authors = [authors]
