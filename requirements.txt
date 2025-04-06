@@ -1,3 +1,4 @@
 click==8.1.7
 httpx==0.28.1
-langfun==0.1.1
+langfun @ git+https://github.com/google/langfun.git@3491be8
+python-magic==0.4.27
