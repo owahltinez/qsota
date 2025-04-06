@@ -105,3 +105,26 @@ python qsota.py search --query='wfh' --database='arxiv' \
     | python qsota.py quality --threshold=0.1 \
     > shortlist.jsonl
 ```
+
+## Using `pipx`
+
+You can also install this package using [`pipx`](https://github.com/pypa/pipx):
+
+```bash
+pipx install 'git+https://github.com/owahltinez/qsota.git'
+```
+
+Then you can use this script as a command line tool under `qsota`:
+
+```bash
+CONTEXT=$(cat << EOF
+Investigating the influence of pet interruptions on productivity and stress levels in remote work.
+EOF
+)
+
+qsota search --query='wfh' --database='arxiv' \
+    | qsota relevance --query "$CONTEXT" --threshold=0.1 \
+    | qsota quality --threshold=0.1 \
+    > shortlist.jsonl
+```
+
