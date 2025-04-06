@@ -7,8 +7,6 @@ import xml.etree.ElementTree as ET
 import click
 import httpx
 import langfun as lf
-import magic
-
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -161,7 +159,6 @@ def _iter_ads_api(
 
 
 def _dl_attachment(try_urls: list[str]) -> lf.PDF | str | None:
-  mime = magic.Magic(mime=True)
   for url in try_urls:
     if not url:
       continue
@@ -174,14 +171,7 @@ def _dl_attachment(try_urls: list[str]) -> lf.PDF | str | None:
     except httpx.HTTPStatusError as exc:
       continue
     if response.status_code == 200:
-      mime_type = mime.from_buffer(response.content)
-      if mime_type.startswith("application/pdf"):
-        return lf.PDF.from_bytes(response.content)
-      elif mime_type.startswith("text/html"):
-        return response.text
-      elif mime_type.startswith("text/plain"):
-        return response.text
-      raise ValueError(f"Unsupported MIME type: {mime_type}")
+      return lf.Mime.from_bytes(content=response.content)
   raise ValueError("No valid URLs found")
 
 

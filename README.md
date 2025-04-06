@@ -12,7 +12,8 @@ python script:
 git clone https://github.com/owahltinez/qsota.git && cd qsota
 python -m venv .venv
 source .venv/bin/activate
-python qsota.py <command>
+python -m pip install -e .
+qsota <command>
 ```
 
 ## Commands
@@ -20,7 +21,7 @@ python qsota.py <command>
 For the exhaustive list of parameters that each command supports, run:
 
 ```bash
-python qsota.py <command> help
+qsota <command> help
 ```
 
 Commands that make use of LLMs evaluate prompts via the
@@ -40,7 +41,7 @@ Searches a paper database. The currently supported databases are:
 Example:
 
 ```bash
-python qsota.py search --query='wfh' --database='arxiv' > search_results.jsonl
+qsota search --query='wfh' --database='arxiv' > search_results.jsonl
 ```
 
 The output are JSON lines, so you might want to pipe the output to a file `> search_results.jsonl`
@@ -68,7 +69,7 @@ Investigating the influence of pet interruptions on productivity and stress leve
 EOF
 )
 cat search_results.jsonl \
-    | python qsota.py relevance --query "$CONTEXT" --threshold=0.1 \
+    | qsota relevance --query "$CONTEXT" --threshold=0.1 \
     > relevance.jsonl
 ```
 
@@ -83,7 +84,7 @@ slower. Example:
 
 ```bash
 cat relevance.jsonl \
-    | python qsota.py quality --threshold=0.1 \
+    | qsota quality --threshold=0.1 \
     > quality.jsonl
 ```
 
@@ -100,18 +101,24 @@ Investigating the influence of pet interruptions on productivity and stress leve
 EOF
 )
 
-python qsota.py search --query='wfh' --database='arxiv' \
-    | python qsota.py relevance --query="$CONTEXT" --threshold=0.1 \
-    | python qsota.py quality --threshold=0.1 \
+qsota search --query='wfh' --database='arxiv' \
+    | qsota relevance --query="$CONTEXT" --threshold=0.1 \
+    | qsota quality --threshold=0.1 \
     > shortlist.jsonl
 ```
 
-## Using `pipx`
+## Using `pipx` or `uv`
 
 You can also install this package using [`pipx`](https://github.com/pypa/pipx):
 
 ```bash
 pipx install 'git+https://github.com/owahltinez/qsota.git'
+```
+
+Alternatively, you can also use [`uv tool`](https://docs.astral.sh/uv/concepts/tools/#tools):
+
+```bash
+uv tool install 'git+https://github.com/owahltinez/qsota.git'
 ```
 
 Then you can use this script as a command line tool under `qsota`:
