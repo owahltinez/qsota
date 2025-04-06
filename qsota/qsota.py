@@ -176,7 +176,7 @@ def _dl_attachment(try_urls: list[str]) -> lf.PDF | str | None:
     if response.status_code == 200:
       mime_type = mime.from_buffer(response.content)
       if mime_type.startswith("application/pdf"):
-        return lf.PDF.from_bytes(lf.Mime.download(response.content))
+        return lf.PDF.from_bytes(response.content)
       elif mime_type.startswith("text/html"):
         return response.text
       elif mime_type.startswith("text/plain"):
