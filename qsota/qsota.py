@@ -104,7 +104,7 @@ def _iter_arxiv_api(
     author_list = entry.findall(f"{ns}author")
     category_list = entry.findall(f"{ns}category")
     doi = entry.find(f"{ns}link[@title='doi']")
-    doi = doi.attrib["href"].split("doi.org/")[-1] if doi is not None else []
+    doi = [doi.attrib["href"].split("doi.org/")[-1]] if doi is not None else []
     yield Submission(
         id=id,
         # content_uri=[f"https://ar5iv.org/pdf/{id}"],
