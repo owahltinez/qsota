@@ -11,7 +11,7 @@ setuptools.setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "qsota = qsota:cli",
+            "qsota = qsota.qsota:cli",
         ],
     },
 )
