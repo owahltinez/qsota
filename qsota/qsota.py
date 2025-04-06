@@ -284,8 +284,8 @@ def relevance(
 
 
 @click.command()
-@click.option("--model_name", default=None)
-@click.option("--model_key", default=None)
+@click.option("--model-name", default=None)
+@click.option("--model-key", default=None)
 @click.option("--threshold", type=float, default=None)
 def quality(
     model_name: str | None = None,
