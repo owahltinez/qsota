@@ -241,8 +241,8 @@ def search(
 
 @click.command()
 @click.option("--query", required=True)
-@click.option("--model_name", default=None)
-@click.option("--model_key", default=None)
+@click.option("--model-name", default=None)
+@click.option("--model-key", default=None)
 @click.option("--threshold", type=float, default=None)
 def relevance(
     query: str,

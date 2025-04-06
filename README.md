@@ -28,7 +28,7 @@ Commands that make use of LLMs evaluate prompts via the
 an argument, or the API key can be in one of the known environment variables i.e., `OPENAI_API_KEY`
 or `GOOGLE_API_KEY`.
 
-All commands that use an LLM accept `--mode_name` and `--model_key` parameters.
+All commands that use an LLM accept `--mode-name` and `--model-key` parameters.
 
 ### `search`
 
@@ -101,7 +101,7 @@ EOF
 )
 
 python qsota.py search --query='wfh' --database='arxiv' \
-    | python qsota.py relevance --query "$CONTEXT" --threshold=0.1 \
+    | python qsota.py relevance --query="$CONTEXT" --threshold=0.1 \
     | python qsota.py quality --threshold=0.1 \
     > shortlist.jsonl
 ```
@@ -123,7 +123,7 @@ EOF
 )
 
 qsota search --query='wfh' --database='arxiv' \
-    | qsota relevance --query "$CONTEXT" --threshold=0.1 \
+    | qsota relevance --query="$CONTEXT" --threshold=0.1 \
     | qsota quality --threshold=0.1 \
     > shortlist.jsonl
 ```
