@@ -327,8 +327,11 @@ def quality(
       click.echo(json.dumps(combined_output, ensure_ascii=False))
 
 
+# Add commands to the CLI
+cli.add_command(search)
+cli.add_command(relevance)
+cli.add_command(quality)
+
+
 if __name__ == "__main__":
-  cli.add_command(search)
-  cli.add_command(relevance)
-  cli.add_command(quality)
   cli()
