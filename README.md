@@ -32,16 +32,28 @@ All commands that use an LLM accept `--mode_name` and `--model_key` parameters.
 
 ### `search`
 
-Searches arXiv using the [arXiv API](https://info.arxiv.org/help/api/index.html). No API token
-or account are required. The query parameter corresponds to the handling of arXiv search
-functionality as-is. Example:
+Searches a paper database. The currently supported databases are:
+
+* [arXiv][arxiv] (`arxiv`): [arXiv API][arxiv-api]. No API token or account required.
+* [Astrophysics Data System][ads] (`ads`): [ADS API][ads-api]. Token required for authentication.
+
+Example:
 
 ```bash
-python qsota.py search --query='all:wfh' > search_results.jsonl
+python qsota.py search --query='wfh' --database='arxiv' > search_results.jsonl
 ```
 
 The output are JSON lines, so you might want to pipe the output to a file `> search_results.jsonl`
 or to one of the other commands which accept JSON lines from `stdin` as input.
+
+You can use the optional flag `--has-doi` to filter results which have an external
+[DOI](https://doi.org) associated with them. This means that the result is likely to have been
+published elsewhere.
+
+[arxiv]: https://arxiv.org/
+[arxiv-api]: https://info.arxiv.org/help/api/index.html
+[ads]: https://ui.adsabs.harvard.edu/
+[ads-api]: https://github.com/adsabs/adsabs-dev-api
 
 ### `relevant`
 
@@ -88,7 +100,7 @@ Investigating the influence of pet interruptions on productivity and stress leve
 EOF
 )
 
-python qsota.py search --query='all:wfh' \
+python qsota.py search --query='wfh' --database='arxiv' \
     | python qsota.py relevance --query "$CONTEXT" --threshold=0.1 \
     | python qsota.py quality --threshold=0.1 \
     > shortlist.jsonl
