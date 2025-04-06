@@ -24,17 +24,11 @@ python qsota.py <command> help
 ```
 
 Commands that make use of LLMs evaluate prompts via the
-[llm package](https://pypi.org/project/llm/). If you want to use models that require further setup,
-then you'll need to do that first. For example, to use Gemini models:
+[langfun package](https://pypi.org/project/langfun/). Models require either passing an API key as
+an argument, or the API key can be in one of the known environment variables i.e., `OPENAI_API_KEY`
+or `GOOGLE_API_KEY`.
 
-```bash
-python -m pip install llm
-llm install llm-gemini
-llm keys set gemini
-```
-
-All commands that use an LLM accept `--mode_name` and `--model_key` parameters, as well as `--qps`
-(queries per second) for rate limiting.
+All commands that use an LLM accept `--mode_name` and `--model_key` parameters.
 
 ### `search`
 
@@ -61,7 +55,9 @@ CONTEXT=$(cat << EOF
 Investigating the influence of pet interruptions on productivity and stress levels in remote work.
 EOF
 )
-cat search_results.jsonl | python qsota.py relevance --query "$CONTEXT" > relevance.jsonl
+cat search_results.jsonl \
+    | python qsota.py relevance --query "$CONTEXT" --threshold=0.1 \
+    > relevance.jsonl
 ```
 
 Once again, the output are JSON lines. So you might want to pipe the output to a file
@@ -74,7 +70,9 @@ This command will also download the full text for the paper, so it is expected t
 slower. Example:
 
 ```bash
-cat relevance.jsonl | python qsota.py quality > quality.jsonl
+cat relevance.jsonl \
+    | python qsota.py quality --threshold=0.1 \
+    > quality.jsonl
 ```
 
 Once again, the output are JSON lines. So you might want to pipe the output to a file
@@ -91,7 +89,7 @@ EOF
 )
 
 python qsota.py search --query='all:wfh' \
-    | python qsota.py relevance --query "$CONTEXT" \
-    | python qsota.py quality \
+    | python qsota.py relevance --query "$CONTEXT" --threshold=0.1 \
+    | python qsota.py quality --threshold=0.1 \
     > shortlist.jsonl
 ```

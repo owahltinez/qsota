@@ -38,6 +38,6 @@ other than the JSON string: { "quality_score": #.##, "quality_rationale": "..." 
 
 {{ submission }}
 
-{{ text_attachments }}
+{{ paper }}
 
 # JSON output:

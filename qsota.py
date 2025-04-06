@@ -1,30 +1,20 @@
-import asyncio
-import functools
 import json
 import re
 import os
-import time
-from typing import Callable, Iterable, TypedDict, TypeVar
+from typing import Iterable, TypedDict, TypeVar
 import xml.etree.ElementTree as ET
 
 import click
 import httpx
-import llm
-import tqdm.auto as tqdm
+import langfun as lf
 
 
 T = TypeVar("T")
 S = TypeVar("S")
 
+_DEFAULT_MODEL_NAME = "google_genai://gemini-2.0-flash"
 _DEFAULT_SEARCH_LIMIT = 100
 _DEFAULT_THRESHOLD = 0.75
-
-_MODEL_API_QPS = {
-    "gemini-2.0-flash-exp": 5 / 60,
-    "gemini-1.5-flash-latest": 2_000 / 60,
-    "gemini-1.5-pro-latest": 1_000 / 60,
-}
-_DEFAULT_MODEL_API_QPS = 8
 
 
 # Path to the folder containing this script.
@@ -36,68 +26,25 @@ _QUALITY_SCORE_PROMPT_PATH = f"{_CURR_DIR}/quality_score_prompt.txt"
 
 class Submission(TypedDict):
   id: str
-  authors: str
+  authors: list[str]
   title: str
-  categories: str
+  categories: list[str]
   abstract: str
   update_date: str
 
 
-class RateLimitedAsyncModel(llm.AsyncModel):
+class RelevanceResponse(TypedDict):
+  relevance_score: float
+  relevance_rationale: str
 
-  def rate_limited_prompt(
-      self,
-      prompt: str,
-      *,
-      attachments: list[llm.Attachment] | None = None,
-  ) -> asyncio.Future[llm.AsyncResponse]:
-    raise NotImplementedError
+
+class QualityResponse(TypedDict):
+  quality_score: float
+  quality_rationale: str
 
 
 def _normalize_text(text: str) -> str:
   return re.sub(r"\s+", " ", text.replace("\n", " ")).strip()
-
-
-def _rate_limited_func(
-    func: Callable[[T], asyncio.Future[S]],
-    qps: float,
-    semaphore: asyncio.Semaphore = asyncio.Semaphore(1),
-) -> Callable[[T], asyncio.Future[S]]:
-  @functools.wraps(func)
-  async def wrapper(*args, **kwargs):
-    async with semaphore:
-      # Get the start time (monotonic clock) before calling the function.
-      start_time = time.monotonic()
-      # Call the function with the provided arguments.
-      result = func(*args, **kwargs)
-      # Get the end time (monotonic clock) after calling the function.
-      end_time = time.monotonic()
-      # Calculate the time taken to call the function.
-      elapsed_time = end_time - start_time
-      # Calculate the time to sleep to maintain the desired QPS.
-      sleep_time = max(0, 1 / qps - elapsed_time)
-      # Sleep for the calculated time.
-      await asyncio.sleep(sleep_time)
-      # Return the result of the function call.
-      return result
-
-  return wrapper
-
-
-async def _future_and_data(
-    future: asyncio.Future[T],
-    data: S,
-) -> asyncio.Future[tuple[T, S]]:
-  return await future, data
-
-
-def coroutine(func: Callable[..., T]) -> Callable[..., T]:
-  @functools.wraps(func)
-  def wrapper(*args, **kwargs):
-    return asyncio.run(func(*args, **kwargs))
-    # yield from func(*args, **kwargs)
-
-  return wrapper
 
 
 @click.group()
@@ -113,6 +60,15 @@ def _iter_stdin_json() -> Iterable[dict]:
       yield json.loads(line)
     except json.JSONDecodeError as exc:
       raise RuntimeError(f"Error decoding JSON: {exc}. Line: {line}") from exc
+
+
+def _parse_json_response(text: str) -> dict:
+  text = text.strip()
+  text = text[text.find("{") : text.rfind("}") + 1]
+  try:
+    return json.loads(text)
+  except json.JSONDecodeError as exc:
+    raise RuntimeError(f"Error decoding JSON: {exc}. Text: {text}") from exc
 
 
 def _iter_arxiv_api(
@@ -142,7 +98,7 @@ def _iter_arxiv_api(
   for entry in root.findall(f"{ns}entry"):
     author_list = entry.findall(f"{ns}author")
     category_list = entry.findall(f"{ns}category")
-    yield dict(
+    yield Submission(
         id=entry.find(f"{ns}id").text.split("/")[-1],
         authors=[x.find(f"{ns}name").text for x in author_list],
         title=_normalize_text(entry.find(f"{ns}title").text),
@@ -152,82 +108,24 @@ def _iter_arxiv_api(
     )
 
 
-def _format_prompt(prompt: str, **kwargs) -> str:
-  for key, value in kwargs.items():
-    if isinstance(value, dict):
-      value = json.dumps(value)
-    prompt = prompt.replace("{{ " + key + " }}", str(value))
-  return prompt
-
-
-def _parse_json_response(text: str) -> dict:
-  text = text.strip()
-  text = text[text.find("{") : text.rfind("}") + 1]
-  try:
-    return json.loads(text)
-  except json.JSONDecodeError as exc:
-    raise RuntimeError(f"Error decoding JSON: {exc}. Text: {text}") from exc
-
-
-def _init_model(
-    model_name: str | None = None,
-    model_key: str | None = None,
-    qps: float | None = None,
-) -> RateLimitedAsyncModel:
-  # Load the model and set the key if provided.
-  llm_model = llm.get_async_model(model_name)
-  if model_key:
-    llm_model.key = model_key
-
-  # Enforce API limits for the model.
-  llm_model.rate_limited_prompt = _rate_limited_func(
-      llm_model.prompt,
-      qps=qps or _MODEL_API_QPS.get(model_name, _DEFAULT_MODEL_API_QPS),
-  )
-
-  return llm_model
-
-
-async def _download_attachment(
-    attachment: llm.Attachment,
-) -> llm.Attachment:
-  async with httpx.AsyncClient() as client:
-    res = await client.get(
-        attachment.url,
-        headers={"User-Agent": "Mozilla/5.0"},
-    )
-    attachment.type = res.headers.get("Content-Type") or "text/plain"
-    attachment.content_bytes = res.content
-    return attachment
-
-
-async def _eval_templated_prompt(
-    prompt_substitutions: dict,
-    model: RateLimitedAsyncModel,
+def _eval_templated_prompt(
     prompt_template: str,
-    attachments: list[llm.Attachment] | None = None,
-) -> dict:
-  # Download the attachments ourselves.
-  download_tasks = [_download_attachment(a) for a in attachments or []]
-  attachments = await asyncio.gather(*download_tasks)
-
-  # Distinguish between text and non-text attachments.
-  text_attachments = [x for x in attachments if x.type.startswith("text/")]
-  other_attachments = [x for x in attachments if not x.type.startswith("text/")]
-
-  # Embed the text attachments directly into the prompt, keep others as-is.
-  texts = [x.content_bytes.decode() for x in text_attachments]
-  prompt_substitutions = dict(
-      prompt_substitutions,
-      text_attachments="\n\n".join(texts),
+    output_ctor: type[T],
+    model: lf.LanguageModel,
+    attachments: dict[str, str] | None = None,
+    **kwargs,
+) -> T:
+  dl_fn = lambda x: lf.PDF.from_bytes(lf.Mime.download(x))
+  attachments = {k: dl_fn(v) for k, v in (attachments or {}).items()}
+  # attachments = {k: lf.Image.from_bytes(v) for k, v in attachments.items() if v is not None}
+  output = lf.query(
+      prompt=prompt_template,
+      schema=str,
+      lm=model,
+      **attachments,
+      **kwargs,
   )
-
-  prompt = _format_prompt(prompt_template, **prompt_substitutions)
-  response = await model.rate_limited_prompt(
-      prompt,
-      attachments=other_attachments,
-  )
-  return _parse_json_response(await response.text())
+  return output_ctor(**_parse_json_response(output))
 
 
 @click.command()
@@ -241,7 +139,7 @@ def search(
       query=query,
       limit=limit,
   ):
-    click.echo(json.dumps(submission))
+    click.echo(json.dumps(submission, ensure_ascii=False))
 
 
 @click.command()
@@ -249,73 +147,89 @@ def search(
 @click.option("--model_name", default=None)
 @click.option("--model_key", default=None)
 @click.option("--threshold", type=float, default=None)
-@click.option("--qps", type=float, default=None)
-@coroutine
-async def relevance(
+def relevance(
     query: str,
     model_name: str | None = None,
     model_key: str | None = None,
     threshold: float | None = None,
-    qps: float | None = None,
+    # qps: float | None = None,
 ) -> None:
+  model_name = model_name or _DEFAULT_MODEL_NAME
   threshold = threshold or _DEFAULT_THRESHOLD
-  llm_model = _init_model(model_name, model_key, qps)
+  lm = lf.LanguageModel.get(model_name, api_key=model_key)
 
   with open(_RELEVANCE_SCORE_PROMPT_PATH) as f:
     relevance_score_prompt = f.read()
 
-  tasks: list[asyncio.Task[tuple[dict, Submission]]] = []
-  for record in _iter_stdin_json():
-    result = _eval_templated_prompt(
-        prompt_substitutions=dict(query=query, **record),
-        model=llm_model,
-        prompt_template=relevance_score_prompt,
-    )
-    tasks.append(asyncio.ensure_future(_future_and_data(result, record)))
-
-  for task in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks)):
-    result, record = await task
+  map_func = lambda record: _eval_templated_prompt(
+      prompt_template=relevance_score_prompt,
+      output_ctor=RelevanceResponse,
+      model=lm,
+      query=query,
+      submission=record,
+  )
+  for submission, result, error in lf.concurrent_map(
+      map_func,
+      _iter_stdin_json(),
+      max_workers=8,
+      show_progress=True,
+  ):
+    submission: Submission
+    result: RelevanceResponse
+    error: Exception | None
+    if error:
+      raise error
     if result.get("relevance_score", 0) >= threshold:
-      click.echo(json.dumps(dict(**result, **record), ensure_ascii=False))
+      combined_output = dict(
+          **submission,
+          **result,
+      )
+      click.echo(json.dumps(combined_output, ensure_ascii=False))
 
 
 @click.command()
 @click.option("--model_name", default=None)
 @click.option("--model_key", default=None)
 @click.option("--threshold", type=float, default=None)
-@click.option("--qps", type=float, default=None)
-@coroutine
-async def quality(
+def quality(
     model_name: str | None = None,
     model_key: str | None = None,
     threshold: float | None = None,
-    qps: float | None = None,
+    # qps: float | None = None,
 ) -> None:
+  model_name = model_name or _DEFAULT_MODEL_NAME
   threshold = threshold or _DEFAULT_THRESHOLD
-  llm_model = _init_model(model_name, model_key, qps)
+  lm = lf.LanguageModel.get(model_name, api_key=model_key)
 
   with open(_QUALITY_SCORE_PROMPT_PATH) as f:
     qualitative_score_prompt = f.read()
 
-  tasks: list[asyncio.Task[tuple[dict, Submission]]] = []
-  for record in _iter_stdin_json():
-    # url = f"https://arxiv.org/pdf/{record['id']}"
-    url = f"https://ar5iv.org/html/{record['id']}"
-    result = _eval_templated_prompt(
-        prompt_substitutions=record,
-        model=llm_model,
-        prompt_template=qualitative_score_prompt,
-        attachments=[llm.Attachment(url=url)],
-    )
-    tasks.append(asyncio.ensure_future(_future_and_data(result, record)))
-
-  for task in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks)):
-    try:
-      result, record = await task
-      if result.get("quality_score", 0) >= threshold:
-        click.echo(json.dumps(dict(**result, **record), ensure_ascii=False))
-    except ValueError as exc:
-      click.echo(f"Error: {exc}", err=True)
+  map_func = lambda record: _eval_templated_prompt(
+      prompt_template=qualitative_score_prompt,
+      output_ctor=QualityResponse,
+      model=lm,
+      submission=record,
+      # attachments=dict(paper=f"https://ar5iv.org/pdf/{record['id']}"),
+      attachments=dict(paper=f"https://arxiv.org/pdf/{record['id']}.pdf"),
+  )
+  for submission, result, error in lf.concurrent_map(
+      map_func,
+      _iter_stdin_json(),
+      max_workers=8,
+      show_progress=True,
+  ):
+    submission: Submission
+    result: QualityResponse
+    error: Exception | None
+    if error:
+      click.echo(f"Error: {error}", err=True)
+      continue
+    if result.get("quality_score", 0) >= threshold:
+      combined_output = dict(
+          **submission,
+          **result,
+      )
+      click.echo(json.dumps(combined_output, ensure_ascii=False))
 
 
 if __name__ == "__main__":
