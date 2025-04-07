@@ -148,6 +148,7 @@ def _iter_ads_api(
         id=doc["bibcode"],
         content_uri=[
             f"https://ui.adsabs.harvard.edu/link_gateway/{doc['bibcode']}/PUB_HTML",
+            f"https://ui.adsabs.harvard.edu/link_gateway/{doc['bibcode']}/ADS_PDF",
             f"https://ui.adsabs.harvard.edu/link_gateway/{doc['bibcode']}/EPRINT_PDF",
         ],
         authors=[_normalize_text(x) for x in authors],
