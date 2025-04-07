@@ -171,7 +171,6 @@ def _dl_attachment(try_urls: list[str]) -> lf.PDF | str | None:
           headers={"User-Agent": "Mozilla/5.0"},
       ).raise_for_status()
     except httpx.HTTPStatusError as exc:
-      click.echo(f"Error downloading {url}: {exc}", err=True)
       continue
     if response.status_code == 200:
       return lf.Mime.from_bytes(content=response.content)
