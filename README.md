@@ -16,6 +16,24 @@ python -m pip install -e .
 qsota <command>
 ```
 
+## Models
+
+Commands that make use of LLMs evaluate prompts via the [langfun package][langfun]. Models require
+either passing an API key as an argument, or the API key can be in one of the known environment
+variables i.e., `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`, etc.
+
+All commands that use an LLM accept `--mode-name` and `--model-key` parameters. For a full list of
+supported models, check the [langfun][langfun] documentation. Some of the models tested include:
+
+* **Google Gemini 2.0 Flash** (`google_genai://gemini-2.0-flash`): This is the default model if no
+  `--model-name` is provided.
+* **GPT-4o** (`gpt-4o`): It does not support PDF format, so the quality assessment will fail unless
+  the paper is available in cleartext format.
+* **Claude 3.5** (`claude-3-5-sonnet-latest`): Rate limits make using this model impractical unless
+  it's a very narrow search query.
+
+[langfun]: https://pypi.org/project/langfun/
+
 ## Commands
 
 For the exhaustive list of parameters that each command supports, run:
@@ -23,13 +41,6 @@ For the exhaustive list of parameters that each command supports, run:
 ```bash
 qsota <command> help
 ```
-
-Commands that make use of LLMs evaluate prompts via the
-[langfun package](https://pypi.org/project/langfun/). Models require either passing an API key as
-an argument, or the API key can be in one of the known environment variables i.e., `OPENAI_API_KEY`
-or `GOOGLE_API_KEY`.
-
-All commands that use an LLM accept `--mode-name` and `--model-key` parameters.
 
 ### `search`
 
