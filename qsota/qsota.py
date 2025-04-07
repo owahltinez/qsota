@@ -105,8 +105,10 @@ def _iter_arxiv_api(
     doi = [doi.attrib["href"].split("doi.org/")[-1]] if doi is not None else []
     yield Submission(
         id=id,
-        # content_uri=[f"https://ar5iv.org/pdf/{id}"],
-        content_uri=[f"https://arxiv.org/pdf/{id}"],
+        content_uri=[
+            f"https://ar5iv.org/pdf/{id}",
+            f"https://arxiv.org/pdf/{id}",
+        ],
         authors=[x.find(f"{ns}name").text for x in author_list],
         title=_normalize_text(entry.find(f"{ns}title").text),
         categories=[x.attrib["term"] for x in category_list],
